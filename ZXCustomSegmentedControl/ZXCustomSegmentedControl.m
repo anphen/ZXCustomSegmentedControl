@@ -13,8 +13,29 @@
 #define IsStrEmpty(_ref)    (((_ref) == nil) || ([(_ref) isEqual:[NSNull null]]) ||([(_ref)isEqualToString:@""]))
 
 static NSInteger const ZXCustomSegmentFontSize = 13;
-static NSInteger const ZXCustomSegmentHeight = 27;
+static NSInteger const ZXCustomSegmentHeight = 25;
 static NSInteger const ZXCustomSegmentMargin = 15;
+
+
+@interface UIView (ZXCustomSegmentedControl)
+
+- (CAGradientLayer *)addGradientLayerWithColors:(NSArray *)colors frame:(CGRect)frame;
+
+@end
+
+@implementation UIView (ZXCustomSegmentedControl)
+
+- (CAGradientLayer *)addGradientLayerWithColors:(NSArray *)colors frame:(CGRect)frame{
+    CAGradientLayer *gradientLayer = [CAGradientLayer layer];
+    gradientLayer.colors = colors;
+    gradientLayer.startPoint = CGPointMake(0, 0.5);
+    gradientLayer.endPoint = CGPointMake(1, 0.5);
+    gradientLayer.frame = frame;
+    [self.layer insertSublayer:gradientLayer atIndex:0];
+    return gradientLayer;
+}
+
+@end
 
 @interface ZXCustomSegment : UIView
 
@@ -38,9 +59,13 @@ static NSInteger const ZXCustomSegmentMargin = 15;
 @property (nonatomic, copy) NSString *gradientStartColor;
 @property (nonatomic, copy) NSString *gradientEndColor;
 
+@property (nonatomic, weak) MASConstraint *topConstraint;
+@property (nonatomic, weak) MASConstraint *bottomConstraint;
+@property (nonatomic, weak) MASConstraint *heightConstraint;
+
 @property (nonatomic, strong) CAGradientLayer *gradientLayer;
 
-@property (nonatomic, copy) void(^clickCallBack)(ZXCustomSegment *segment);
+@property (nonatomic, copy) void(^clickCallBack)(ZXCustomSegment *segment ,BOOL executeBlock);
 
 @property (nonatomic, strong) MASConstraint *backImageWidthConstraint;
 
@@ -84,16 +109,9 @@ static NSInteger const ZXCustomSegmentMargin = 15;
         }];
         [_backImageView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.center.mas_equalTo(self);
-            make.height.mas_equalTo(ZXCustomSegmentHeight);
+            make.height.mas_equalTo(self.mas_height);
             self.backImageWidthConstraint = make.width.mas_equalTo(0);
-//            make.left.mas_equalTo(self.titleLabel.mas_left).offset(-ZXCustomSegmentMargin).priority(MASLayoutPriorityRequired);
-//            make.right.mas_equalTo(self.titleLabel.mas_right).offset(ZXCustomSegmentMargin).priority(MASLayoutPriorityRequired);
-//            make.top.mas_equalTo(self.titleLabel.mas_top);
-//            make.bottom.mas_equalTo(self.titleLabel.mas_bottom);
         }];
-        
-//        [_backImageView setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
-//        [_backImageView setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisVertical];
         self.segmentType = ZXCustomSegmentTypeNormal;
         
         [self addGestureRecognizer:[[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(click)]];
@@ -103,7 +121,7 @@ static NSInteger const ZXCustomSegmentMargin = 15;
 
 - (void)click{
     if (self.clickCallBack) {
-        self.clickCallBack(self);
+        self.clickCallBack(self, YES);
     }
 }
 
@@ -112,9 +130,8 @@ static NSInteger const ZXCustomSegmentMargin = 15;
     switch (self.segmentType) {
         case ZXCustomSegmentTypeNormal:
         {
-            //设置背景色
             self.backgroundColor = [UIColor colorWithHexString:self.normalBackColor];
-            
+            self.layer.mask.backgroundColor = [UIColor colorWithHexString:self.normalBackColor].CGColor;
             if (!IsStrEmpty(self.normalBackImage)) {
                 self.backImageView.hidden = NO;
                 self.backImageView.image = [UIImage imageNamed:self.normalBackImage];
@@ -130,8 +147,8 @@ static NSInteger const ZXCustomSegmentMargin = 15;
             break;
         case ZXCustomSegmentTypeSelected:
         {
-            //设置背景色
             self.backgroundColor = [UIColor colorWithHexString:self.selectedBackColor];
+            self.layer.mask.backgroundColor = [UIColor colorWithHexString:self.selectedBackColor].CGColor;
             
             if (!IsStrEmpty(self.selectedBackImage)) {
                 self.backImageView.hidden = NO;
@@ -147,7 +164,6 @@ static NSInteger const ZXCustomSegmentMargin = 15;
             if (!IsStrEmpty(self.gradientStartColor) && !IsStrEmpty(self.gradientEndColor)) {
                 self.gradientLayer = [self addGradientLayerWithColors:@[(__bridge id)[UIColor colorWithHexString:self.gradientStartColor].CGColor,(__bridge id)[UIColor colorWithHexString:self.gradientEndColor].CGColor] frame:self.bounds];
             }
-            
             self.backImageWidthConstraint.mas_equalTo(self.frame.size.width);
         }
             break;
@@ -171,9 +187,16 @@ static NSInteger const ZXCustomSegmentMargin = 15;
 
 @property (nonatomic, strong) NSArray *itemArray;
 
-@property (nonatomic, strong) NSMutableArray *segmentArray;
+@property (nonatomic, strong) NSMutableArray <UIView *>*segmentArray;
 
 @property (nonatomic, strong) ZXCustomSegment *currentSelectSegment;
+
+@property (nonatomic, strong) NSMutableArray<UIView *> *intervalArray;
+
+@property (nonatomic, strong) CAShapeLayer *leftArcLayer;
+
+@property (nonatomic, strong) CAShapeLayer *rightArcLayer;
+
 
 @end
 
@@ -183,10 +206,11 @@ static NSInteger const ZXCustomSegmentMargin = 15;
 {
     self = [super init];
     if (self) {
-        self.borderColor = @"#FF5500";
+        self.backgroundColor = [UIColor clearColor];
         _itemArray = itemArray;
         _segmentArray = [NSMutableArray array];
-        _originIndex = 0;
+        _intervalArray = [NSMutableArray array];
+      
         ZXCustomSegment *lastSegment = nil;
         for (int i = 0; i < _itemArray.count; i++) {
             NSString *title = [_itemArray objectAtIndex:i];
@@ -194,50 +218,154 @@ static NSInteger const ZXCustomSegmentMargin = 15;
             
             segment.normalTitle = title;
             [_segmentArray addObject:segment];
-            if (i == _originIndex) {
-                segment.segmentType = ZXCustomSegmentTypeSelected;
-                _currentSelectSegment = segment;
-            }
-            else{
-                 segment.segmentType = ZXCustomSegmentTypeNormal;
-            }
+            segment.segmentType = ZXCustomSegmentTypeNormal;
             __weak typeof(self)weakSelf = self;
-            segment.clickCallBack = ^(ZXCustomSegment *segment) {
+            segment.clickCallBack = ^(ZXCustomSegment *segment, BOOL executeBlock)  {
+                
+                NSInteger segmentIndex = [weakSelf.segmentArray indexOfObject:segment];
+                if (executeBlock &&weakSelf.willChangeIndexHandle) {
+                    weakSelf.willChangeIndexHandle(weakSelf.currentIndex, segmentIndex);
+                }
+                
+                NSInteger lastIndex = weakSelf.currentIndex;
+                ZXCustomSegment *lastSegment = weakSelf.currentSelectSegment;
                 weakSelf.currentSelectSegment.segmentType = ZXCustomSegmentTypeNormal;
                 segment.segmentType = ZXCustomSegmentTypeSelected;
                 weakSelf.currentSelectSegment = segment;
-                if (weakSelf.selectChangeHandle) {
-                    weakSelf.selectChangeHandle(weakSelf.currentIndex);
+                if (executeBlock && weakSelf.didChangeIndexHandle) {
+                    weakSelf.didChangeIndexHandle(weakSelf.currentIndex, lastIndex);
+                }
+                ZXCustomSegment *currentSegment = weakSelf.currentSelectSegment;
+                if (lastSegment) {
+                    lastSegment.topConstraint.mas_equalTo(1);
+                    lastSegment.bottomConstraint.mas_equalTo(-1);
+                    lastSegment.heightConstraint.mas_equalTo(ZXCustomSegmentHeight);
+                }
+                if (currentSegment) {
+                    currentSegment.topConstraint.mas_equalTo(0);
+                    currentSegment.bottomConstraint.mas_equalTo(0);
+                    currentSegment.heightConstraint.mas_equalTo(ZXCustomSegmentHeight + 2);
+                }
+                
+                NSInteger currentIndex = weakSelf.currentIndex;
+                if (lastIndex == 0) {
+                    weakSelf.intervalArray.firstObject.hidden = NO;
+                }
+                else if (lastIndex == self.segmentArray.count -1){
+                    weakSelf.intervalArray.lastObject.hidden = NO;
+                }
+                else{
+                    [weakSelf.intervalArray objectAtIndex:lastIndex - 1].hidden = NO;
+                    [weakSelf.intervalArray objectAtIndex:lastIndex].hidden = NO;
+                }
+                
+                if (currentIndex == 0) {
+                    weakSelf.intervalArray.firstObject.hidden = YES;
+                }
+                else if (currentIndex == self.segmentArray.count -1){
+                    weakSelf.intervalArray.lastObject.hidden = YES;
+                }
+                else{
+                    [weakSelf.intervalArray objectAtIndex:currentIndex -1].hidden = YES;
+                    [weakSelf.intervalArray objectAtIndex:currentIndex].hidden = YES;
                 }
             };
             [self addSubview:segment];
             if (i == 0) {
                 [segment mas_makeConstraints:^(MASConstraintMaker *make) {
                     make.left.mas_equalTo(0);
-                    make.top.bottom.mas_equalTo(0);
-                    make.height.mas_equalTo(ZXCustomSegmentHeight).priority(MASLayoutPriorityDefaultHigh);
+                    segment.topConstraint = make.top.mas_equalTo(1);
+                    segment.bottomConstraint = make.bottom.mas_equalTo(-1);
+                    segment.heightConstraint = make.height.mas_equalTo(ZXCustomSegmentHeight).priority(MASLayoutPriorityDefaultHigh);
                 }];
             }
             else if (i == _itemArray.count -1){
+               
                 [segment mas_makeConstraints:^(MASConstraintMaker *make) {
-                    make.left.mas_equalTo(lastSegment.mas_right).offset(1);
+                    make.left.mas_equalTo(lastSegment.mas_right);
                     make.right.mas_equalTo(0);
-                    make.top.bottom.mas_equalTo(0);
-                    make.height.mas_equalTo(ZXCustomSegmentHeight).priority(MASLayoutPriorityDefaultHigh);
+                    segment.topConstraint = make.top.mas_equalTo(1);
+                    segment.bottomConstraint = make.bottom.mas_equalTo(-1);
+                    segment.heightConstraint = make.height.mas_equalTo(ZXCustomSegmentHeight);
                 }];
+                
+                UIView *intervalView = [[UIView alloc]init];
+                intervalView.backgroundColor = [UIColor clearColor];
+                [self addSubview:intervalView];
+                [intervalView mas_makeConstraints:^(MASConstraintMaker *make) {
+                    make.left.mas_equalTo(lastSegment.mas_right).offset(-0.5);
+                    make.top.bottom.mas_equalTo(0);
+                    make.width.mas_equalTo(1);
+                }];
+                [self.intervalArray addObject:intervalView];
+                
             }
             else{
                 [segment mas_makeConstraints:^(MASConstraintMaker *make) {
-                    make.left.mas_equalTo(lastSegment.mas_right).offset(1);
-                    make.top.bottom.mas_equalTo(0);
-                    make.height.mas_equalTo(ZXCustomSegmentHeight).priority(MASLayoutPriorityDefaultHigh);
+                    make.left.mas_equalTo(lastSegment.mas_right);
+                    segment.topConstraint = make.top.mas_equalTo(1);
+                    segment.bottomConstraint = make.bottom.mas_equalTo(-1);
+                    segment.heightConstraint = make.height.mas_equalTo(ZXCustomSegmentHeight);
                 }];
+                UIView *intervalView = [[UIView alloc]init];
+                intervalView.backgroundColor = [UIColor clearColor];
+                [self addSubview:intervalView];
+                [intervalView mas_makeConstraints:^(MASConstraintMaker *make) {
+                    make.left.mas_equalTo(lastSegment.mas_right).offset(-0.5);
+                    make.top.bottom.mas_equalTo(0);
+                    make.width.mas_equalTo(1);
+                }];
+                [self.intervalArray addObject:intervalView];
             }
             lastSegment = segment;
         }
-      
+        self.originIndex = 0;
+        self.borderColor = @"#FF5500";
     }
     return self;
+}
+
+- (void)layoutSubviews{
+    if (self.frame.size.width != 0 && !self.layer.mask) {
+        UIBezierPath *maskPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds byRoundingCorners:UIRectCornerAllCorners cornerRadii:CGSizeMake(self.bounds.size.height * 0.5 , self.bounds.size.height * 0.5)];
+        maskPath.lineWidth = 5;
+        CAShapeLayer *maskLayer = [[CAShapeLayer alloc] init];
+
+        maskLayer.frame = self.bounds;
+
+        maskLayer.path = maskPath.CGPath;
+        self.layer.mask = maskLayer;
+        
+        CAShapeLayer *leftArcLayer=[CAShapeLayer layer];
+        UIBezierPath *path1 = [UIBezierPath bezierPath];
+        [path1 addArcWithCenter:CGPointMake(self.bounds.size.height * 0.5 , self.bounds.size.height * 0.5) radius:(ZXCustomSegmentHeight + 1) * 0.5 startAngle:0.5f *((float)M_PI) endAngle:1.5f * ((float)M_PI) clockwise:YES];
+        leftArcLayer.fillColor = [UIColor clearColor].CGColor;
+        leftArcLayer.strokeColor = [UIColor colorWithHexString:self.borderColor].CGColor;
+        leftArcLayer.lineWidth = 1;
+        leftArcLayer.path = path1.CGPath;
+        self.leftArcLayer = leftArcLayer;
+        CAShapeLayer *rightArcLayer = [CAShapeLayer layer];
+        UIBezierPath *path2 = [UIBezierPath bezierPath];
+        [path2 addArcWithCenter:CGPointMake(self.frame.size.width - self.bounds.size.height * 0.5 , self.bounds.size.height * 0.5) radius:(ZXCustomSegmentHeight + 1) * 0.5 startAngle:1.5f *((float)M_PI) endAngle:0.5f * ((float)M_PI) clockwise:YES];
+        rightArcLayer.fillColor = [UIColor clearColor].CGColor;
+        rightArcLayer.strokeColor = [UIColor colorWithHexString:self.borderColor].CGColor;
+        rightArcLayer.lineWidth = 1;
+        rightArcLayer.path = path2.CGPath;
+        self.rightArcLayer = rightArcLayer;
+    }
+    if (self.currentIndex != 0) {
+        [self.layer addSublayer:self.leftArcLayer];
+    }
+    else{
+        [self.leftArcLayer removeFromSuperlayer];
+    }
+    
+    if (self.currentIndex != self.segmentArray.count - 1) {
+        [self.layer addSublayer:self.rightArcLayer];
+    }
+    else{
+        [self.rightArcLayer removeFromSuperlayer];
+    }
 }
 
 - (NSInteger)currentIndex{
@@ -247,22 +375,56 @@ static NSInteger const ZXCustomSegmentMargin = 15;
 - (void)setOriginIndex:(NSInteger)originIndex{
     _originIndex = originIndex;
     if (originIndex >= 0 && originIndex < self.segmentArray.count) {
+        NSInteger lastIndex = self.currentIndex;
+        ZXCustomSegment *lastSegment = self.currentSelectSegment;
         self.currentSelectSegment.segmentType = ZXCustomSegmentTypeNormal;
-        ZXCustomSegment *segment = [self.segmentArray objectAtIndex:originIndex];
-        if (segment) {
-            segment.segmentType = ZXCustomSegmentTypeSelected;
-            self.currentSelectSegment = segment;
+        
+        ZXCustomSegment *segment = (ZXCustomSegment *)[self.segmentArray objectAtIndex:originIndex];
+        segment.segmentType = ZXCustomSegmentTypeSelected;
+        
+        self.currentSelectSegment = segment;
+        NSInteger currentIndex = self.currentIndex;
+        ZXCustomSegment *currentSegment = self.currentSelectSegment;
+        if (lastSegment) {
+            lastSegment.topConstraint.mas_equalTo(1);
+            lastSegment.bottomConstraint.mas_equalTo(-1);
+            lastSegment.heightConstraint.mas_equalTo(ZXCustomSegmentHeight);
+        }
+        if (currentSegment) {
+            currentSegment.topConstraint.mas_equalTo(0);
+            currentSegment.bottomConstraint.mas_equalTo(0);
+            currentSegment.heightConstraint.mas_equalTo(ZXCustomSegmentHeight +2);
+        }
+        if (lastIndex == 0) {
+            self.intervalArray.firstObject.hidden = NO;
+        }
+        else if (lastIndex == self.segmentArray.count -1){
+            self.intervalArray.lastObject.hidden = NO;
+        }
+        else if (lastIndex >= 0 && lastIndex < self.segmentArray.count){
+            [self.intervalArray objectAtIndex:lastIndex -1].hidden = NO;
+            [self.intervalArray objectAtIndex:lastIndex].hidden = NO;
+        }
+        
+        if (currentIndex == 0) {
+            self.intervalArray.firstObject.hidden = YES;
+        }
+        else if (currentIndex == self.segmentArray.count -1){
+            self.intervalArray.lastObject.hidden = YES;
+        }
+        else if (currentIndex >= 0 && currentIndex < self.segmentArray.count){
+            [self.intervalArray objectAtIndex:currentIndex -1].hidden = YES;
+            [self.intervalArray objectAtIndex:currentIndex].hidden = YES;
         }
     }
 }
 
 - (void)setBorderColor:(NSString *)borderColor{
     _borderColor = borderColor;
-    self.layer.cornerRadius = ZXCustomSegmentHeight * 0.5;
-    self.layer.borderWidth = 1;
-    self.layer.borderColor = [UIColor colorWithHexString:borderColor].CGColor;
-    self.clipsToBounds = YES;
     self.backgroundColor = [UIColor colorWithHexString:borderColor];
+    [self.intervalArray enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        ((UIView *)obj).backgroundColor = [UIColor colorWithHexString:borderColor];
+    }];
 }
 
 - (void)setNormalBackColor:(NSString *)normalBackColor{
@@ -351,7 +513,7 @@ static NSInteger const ZXCustomSegmentMargin = 15;
 }
 
 - (void)setTitleColor:(NSString *)TitleColor forType:(ZXCustomSegmentType)type forIndex:(NSInteger)index{
-    ZXCustomSegment *segment = [self.segmentArray objectAtIndex:index];
+    ZXCustomSegment *segment = (ZXCustomSegment *)[self.segmentArray objectAtIndex:index];
     if (segment) {
         switch (type) {
             case ZXCustomSegmentTypeNormal:
@@ -373,7 +535,7 @@ static NSInteger const ZXCustomSegmentMargin = 15;
 }
 
 - (void)setBackImage:(NSString *)backImage forType:(ZXCustomSegmentType)type forIndex:(NSInteger)index{
-    ZXCustomSegment *segment = [self.segmentArray objectAtIndex:index];
+    ZXCustomSegment *segment = (ZXCustomSegment *)[self.segmentArray objectAtIndex:index];
     if (segment) {
         switch (type) {
             case ZXCustomSegmentTypeNormal:
@@ -394,4 +556,12 @@ static NSInteger const ZXCustomSegmentMargin = 15;
     [segment updateContent];
 }
 
+- (void)changeSelectIndex:(NSInteger)index executeBlock:(BOOL)isExecute{
+    ZXCustomSegment *segment = (ZXCustomSegment *)[self.segmentArray objectAtIndex:index];
+    if (segment.clickCallBack) {
+        segment.clickCallBack(segment, isExecute);
+    }
+}
+
 @end
+

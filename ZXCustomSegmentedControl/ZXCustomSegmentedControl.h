@@ -8,27 +8,6 @@
 
 #import <UIKit/UIKit.h>
 
-@interface UIView (ZXCustomSegmentedControl)
-
-- (CAGradientLayer *)addGradientLayerWithColors:(NSArray *)colors frame:(CGRect)frame;
-
-@end
-
-@implementation UIView (ZXCustomSegmentedControl)
-
-- (CAGradientLayer *)addGradientLayerWithColors:(NSArray *)colors frame:(CGRect)frame{
-    CAGradientLayer *gradientLayer = [CAGradientLayer layer];
-    gradientLayer.colors = colors;
-    gradientLayer.startPoint = CGPointMake(0, 0.5);
-    gradientLayer.endPoint = CGPointMake(1, 0.5);
-    gradientLayer.frame = frame;
-    [self.layer insertSublayer:gradientLayer atIndex:0];
-    return gradientLayer;
-}
-
-@end
-
-
 typedef NS_ENUM(NSUInteger, ZXCustomSegmentType) {
     ZXCustomSegmentTypeNormal,
     ZXCustomSegmentTypeSelected,
@@ -37,6 +16,10 @@ typedef NS_ENUM(NSUInteger, ZXCustomSegmentType) {
 NS_ASSUME_NONNULL_BEGIN
 
 @interface ZXCustomSegmentedControl : UIView
+
+@property (nonatomic, copy) void(^didChangeIndexHandle)(NSInteger currentIndex, NSInteger lastIndex);//选中位置发生改变后回调
+
+@property (nonatomic, copy) void(^willChangeIndexHandle)(NSInteger currentIndex, NSInteger targetIndex);//选中位置发生改变后回调
 
 @property (nonatomic, copy) NSString *normalTitleColor;//default #FFFFFF 正常文字颜色，统一设置
 @property (nonatomic, copy) NSString *selectedTitleColor;//default #FF5500 选中文字颜色，统一设置
@@ -47,11 +30,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *normalBackColor;//default #FFFFFF 正常背景色，统一设置
 @property (nonatomic, copy) NSString *selectedBackColor;//default #FF5500 选中背景色，统一设置
 
-@property (nonatomic, copy) NSString *borderColor;//default #FF4B04 边框颜色，统一设置
+@property (nonatomic, copy) NSString *borderColor;//default #FF5500 边框颜色，统一设置
 
 @property (nonatomic, assign) NSInteger originIndex;//default 0 设置开始的选中位置
-
-@property (nonatomic, copy) void(^selectChangeHandle)(NSInteger index);//选中位置发生改变回调
 
 @property (nonatomic, readonly) NSInteger currentIndex;//当前选中的位置
 
@@ -66,6 +47,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setTitleColor:(NSString *)TitleColor forType:(ZXCustomSegmentType)type forIndex:(NSInteger)index;//定制不同位置，不同状态下的文字颜色
 
 - (void)setBackImage:(NSString *)backImage forType:(ZXCustomSegmentType)type forIndex:(NSInteger)index;//定制不同位置，不同状态下的背景图
+
+- (void)changeSelectIndex:(NSInteger)index executeBlock:(BOOL)executeBlock;
 
 @end
 

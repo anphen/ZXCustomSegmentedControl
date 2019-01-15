@@ -4,7 +4,6 @@
         <adaptation id="fullscreen"/>
     </device>
     <dependencies>
-        <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14460.20"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -28,10 +27,28 @@
                                     <action selector="refresh:" destination="BYZ-38-t0r" eventType="touchUpInside" id="LfA-ZQ-lGM"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="coD-wS-2Db">
+                                <rect key="frame" x="146" y="527" width="83" height="30"/>
+                                <state key="normal" title="change3NO"/>
+                                <connections>
+                                    <action selector="change3NO:" destination="BYZ-38-t0r" eventType="touchUpInside" id="fu6-7C-feO"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="bub-dG-JSa">
+                                <rect key="frame" x="143.5" y="579" width="88" height="30"/>
+                                <state key="normal" title="change3YES"/>
+                                <connections>
+                                    <action selector="change3YES:" destination="BYZ-38-t0r" eventType="touchUpInside" id="Lo8-V5-zm2"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
+                            <constraint firstItem="bub-dG-JSa" firstAttribute="top" secondItem="coD-wS-2Db" secondAttribute="bottom" constant="22" id="7Wi-Ge-QuT"/>
+                            <constraint firstItem="coD-wS-2Db" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="MzO-VJ-3Sk"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="4FA-bY-wle" secondAttribute="bottom" constant="162" id="gZ6-ux-NTn"/>
+                            <constraint firstItem="coD-wS-2Db" firstAttribute="top" secondItem="4FA-bY-wle" secondAttribute="bottom" constant="22" id="hJI-C8-qzJ"/>
+                            <constraint firstItem="bub-dG-JSa" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="qUl-tS-keB"/>
                             <constraint firstItem="4FA-bY-wle" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="ynY-1w-1jG"/>
                         </constraints>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
