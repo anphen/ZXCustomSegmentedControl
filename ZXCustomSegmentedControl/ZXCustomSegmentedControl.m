@@ -325,6 +325,18 @@ static NSInteger const ZXCustomSegmentMargin = 15;
     return self;
 }
 
+- (void)layoutSegmentCtrlToView:(UIView *)superView centerPosition:(CGPoint)center{
+    [superView addSubview:self];
+    [self mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.centerX.mas_equalTo(center.x - superView.center.x);
+        make.centerY.mas_equalTo(center.y - superView.center.y);
+//        make.centerX.mas_equalTo(superView.mas_top);
+//        make.centerY.mas_equalTo(superView.mas_left);
+    }];
+//    [superView addConstraint:[NSLayoutConstraint constraintWithItem:self attribute:NSLayoutAttributeCenterX relatedBy:NSLayoutRelationEqual toItem:superView attribute:NSLayoutAttributeLeft multiplier:1 constant:center.x]];
+//    [superView addConstraint:[NSLayoutConstraint constraintWithItem:self attribute:NSLayoutAttributeCenterY relatedBy:NSLayoutRelationEqual toItem:superView attribute:NSLayoutAttributeCenterY multiplier:1 constant:center.y]];
+}
+
 - (void)layoutSubviews{
     if (self.frame.size.width != 0 && !self.layer.mask) {
         UIBezierPath *maskPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds byRoundingCorners:UIRectCornerAllCorners cornerRadii:CGSizeMake(self.bounds.size.height * 0.5 , self.bounds.size.height * 0.5)];
@@ -484,14 +496,14 @@ static NSInteger const ZXCustomSegmentMargin = 15;
 }
 
 - (void)configGradientBackColorWithStartColor:(NSString *)startColor endColor:(NSString *)endColor forIndex:(NSInteger)index{
-    ZXCustomSegment *segment = [self.segmentArray objectAtIndex:index];
+    ZXCustomSegment *segment = (ZXCustomSegment *)[self.segmentArray objectAtIndex:index];
     segment.gradientStartColor = startColor;
     segment.gradientEndColor = endColor;
     [segment updateContent];
 }
 
 - (void)setTitle:(NSString *)title forType:(ZXCustomSegmentType)type forIndex:(NSInteger)index{
-    ZXCustomSegment *segment = [self.segmentArray objectAtIndex:index];
+    ZXCustomSegment *segment = (ZXCustomSegment *)[self.segmentArray objectAtIndex:index];
     if (segment) {
         switch (type) {
             case ZXCustomSegmentTypeNormal:

@@ -53,13 +53,12 @@
         NSLog(@"====== current = %ld  last = %ld =======", currentIndex, lastIndex);
     };
     
-    [self.view addSubview:segmentCtrl];
-    [segmentCtrl mas_makeConstraints:^(MASConstraintMaker *make) {
-        //        make.height.mas_equalTo(27);
-        make.top.mas_equalTo(100);
-        make.centerX.mas_equalTo(self.view.mas_centerX);
-    }];
     self.segmentCtrl = segmentCtrl;
+    
+    [segmentCtrl layoutSegmentCtrlToView:self.view centerPosition:self.view.center];
+    
+  
+
 }
 
 - (void)viewDidLoad {

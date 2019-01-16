@@ -50,6 +50,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)changeSelectIndex:(NSInteger)index executeBlock:(BOOL)executeBlock;
 
+- (void)layoutSegmentCtrlToView:(UIView *)superView centerPosition:(CGPoint)center;
+
 @end
 
 NS_ASSUME_NONNULL_END
